@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phaser 테스트</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #333; }
+        #game { border: 2px solid white; }
+    </style>
+</head>
+<body>
+    <h1 style="color: white;">Phaser 테스트</h1>
+    <div id="game"></div>
+    
+    <script src="node_modules/phaser/dist/phaser.min.js"></script>
+    <script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 400,
+            height: 300,
+            parent: 'game',
+            backgroundColor: '#87CEEB',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300 },
+                    debug: true
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        const game = new Phaser.Game(config);
+        let player;
+        let cursors;
+
+        function preload() {
+            console.log('preload 시작');
+            
+            // 간단한 사각형 스프라이트 생성
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(0, 0, 32, 32);
+            
+            this.textures.addCanvas('player', canvas);
+            console.log('preload 완료');
+        }
+
+        function create() {
+            console.log('create 시작');
+            
+            // 플레이어 생성
+            player = this.physics.add.sprite(200, 150, 'player');
+            player.setCollideWorldBounds(true);
+            player.setScale(2);
+            
+            // 바닥 생성
+            const ground = this.add.rectangle(200, 280, 400, 40, 0x8B4513);
+            this.physics.add.existing(ground, true);
+            this.physics.add.collider(player, ground);
+            
+            cursors = this.input.keyboard.createCursorKeys();
+            
+            console.log('create 완료, 플레이어:', player);
+        }
+
+        function update() {
+            if (cursors.left.isDown) {
+                player.setVelocityX(-160);
+            } else if (cursors.right.isDown) {
+                player.setVelocityX(160);
+            } else {
+                player.setVelocityX(0);
+            }
+            
+            if (cursors.up.isDown && player.body.touching.down) {
+                player.setVelocityY(-330);
+            }
+        }
+    </script>
+</body>
+</html> 

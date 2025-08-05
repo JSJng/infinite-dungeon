@@ -1,0 +1,19 @@
+{
+  "name": "infinite-dungeon",
+  "version": "1.0.0",
+  "description": "Phaser를 이용한 캐릭터 스프라이트 연습 프로젝트",
+  "main": "index.js",
+  "scripts": {
+    "start": "http-server -p 8080 -c-1",
+    "dev": "http-server -p 8080 -c-1"
+  },
+  "keywords": ["phaser", "game", "sprite", "character"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.70.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+} 
