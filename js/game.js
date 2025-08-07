@@ -9,7 +9,7 @@ const config = {
         default: 'arcade',
         arcade: {
             gravity: { y: 300 },
-            debug: false  // 물리 디버그 비활성화
+            debug: true  // 물리 디버그 활성화하여 충돌 박스 확인
         }
     },
     scene: {
@@ -36,8 +36,15 @@ let canJump = true; // 점프 가능 여부
 function preload() {
     console.log('에셋 로드 시작...');
     
-    // 실제 스프라이트 파일 로드
-    this.load.image('player', 'assets/sprites/player.png');
+    // 걷는 애니메이션용 스프라이트들 로드
+    this.load.image('player_walking1', 'assets/sprites/player_walking1.png');
+    this.load.image('player_walking2', 'assets/sprites/player_walking2.png');
+    
+    // 로드 완료 이벤트 추가
+    this.load.on('complete', function () {
+        console.log('모든 에셋 로드 완료!');
+        console.log('로드된 텍스처들:', this.textures.list);
+    }, this);
     
     // Canvas를 사용해서 간단한 스프라이트 생성 (백업용)
     const canvas = document.createElement('canvas');
@@ -79,16 +86,54 @@ function create() {
     
     // 플레이어 생성
     console.log('플레이어 생성 중...');
-    player = this.physics.add.sprite(100, 450, 'player');
-    player.setBounce(0.2);
-    player.setCollideWorldBounds(true);
-    // player.setTint(0x00ff00); // 초록색으로 설정 - 실제 스프라이트 사용 시 주석처리
-    player.setScale(1); // 스프라이트 크기 조정 - 원래 크기로 설정
+    player = this.physics.add.sprite(100, 100, 'player_walking1'); // 시작 위치를 훨씬 더 높게 조정
+    player.setScale(0.9)
+          .setBounce(0.2)
+          .setCollideWorldBounds(true);
     
-    // 투명도 설정 (필요시)
-    // player.setAlpha(0.8); // 80% 투명도
+    // 시각 스프라이트 크기 가져오기
+    const sw = player.width, sh = player.height;
+    
+    // 바디 크기와 오프셋 조절 (발 부분이 플랫폼에 맞닿도록)
+    player.body.setSize(sw * 0.5, sh * 0.8);
+    player.body.setOffset((sw * 0.5) / 2, sh * 0.2);
+    
+    // 걷기 애니메이션 설정
+    this.anims.create({
+        key: 'walk',
+        frames: [
+            { key: 'player_walking1' },
+            { key: 'player_walking2' }
+        ],
+        frameRate: 6, // 초당 6프레임으로 애니메이션 재생 (더 자연스러운 걷기)
+        repeat: -1 // 무한 반복
+    });
+    
+    // 서있을 때 애니메이션 (walking1 스프라이트 사용)
+    this.anims.create({
+        key: 'idle',
+        frames: [
+            { key: 'player_walking1' }
+        ],
+        frameRate: 1,
+        repeat: -1
+    });
+    
+    // 애니메이션 디버깅을 위한 이벤트 리스너
+    this.anims.events.on('animationstart', function (anim) {
+        console.log('애니메이션 시작:', anim.key);
+    });
+    
+    this.anims.events.on('animationcomplete', function (anim) {
+        console.log('애니메이션 완료:', anim.key);
+    });
+    
+    // 초기 애니메이션 설정
+    player.anims.play('idle');
     
     console.log('플레이어 생성 완료:', player);
+    console.log('애니메이션 생성 완료 - walk, idle');
+    console.log('사용 가능한 애니메이션들:', this.anims.names);
     
     // 플레이어와 플랫폼 충돌 설정
     this.physics.add.collider(player, platforms);
@@ -160,20 +205,42 @@ function create() {
 
 // 게임 업데이트 루프
 function update() {
-    // 키보드 입력 처리 - 더 간단한 버전
+    // 키보드 입력 디버깅
+    if (cursors.left.isDown) console.log('왼쪽 화살표 눌림');
+    if (cursors.right.isDown) console.log('오른쪽 화살표 눌림');
+    if (cursors.up.isDown) console.log('위쪽 화살표 눌림');
+    if (keys.A.isDown) console.log('A키 눌림');
+    if (keys.D.isDown) console.log('D키 눌림');
+    if (keys.W.isDown) console.log('W키 눌림');
+    
+    // 키보드 입력 처리
     if (cursors.left.isDown || keys.A.isDown) {
+        console.log('왼쪽 이동 중...');
         player.setVelocityX(-160);
         player.setFlipX(true);
+        // 걷기 애니메이션 재생
+        if (player.anims.getCurrentKey() !== 'walk') {
+            player.anims.play('walk', true);
+        }
     } else if (cursors.right.isDown || keys.D.isDown) {
+        console.log('오른쪽 이동 중...');
         player.setVelocityX(160);
         player.setFlipX(false);
+        // 걷기 애니메이션 재생
+        if (player.anims.getCurrentKey() !== 'walk') {
+            player.anims.play('walk', true);
+        }
     } else {
         player.setVelocityX(0);
+        // 서있을 때 기본 애니메이션 재생
+        if (player.anims.getCurrentKey() !== 'idle') {
+            player.anims.play('idle', true);
+        }
     }
     
-    // 점프 처리 - 강화된 착지 판정
+    // 점프 처리 - blocked.down 중심의 착지 판정
     const isJumpPressed = cursors.up.isDown || keys.W.isDown || keys.SPACE.isDown;
-    const onGround = player.body.touching.down || player.body.blocked.down;
+    const onGround = player.body.blocked.down; // blocked.down 중심으로 착지 판정
     
     // 바닥에 닿아있을 때 점프 가능 상태로 설정
     if (onGround) {
@@ -187,8 +254,8 @@ function update() {
         console.log('점프 성공!');
     }
     
-    // S키로 아래로 이동 (옵션)
-    if (keys.S.isDown) {
+    // S키로 아래로 이동 (공중에서만 허용)
+    if (keys.S.isDown && !onGround) {
         player.setVelocityY(100);
     }
     
@@ -208,9 +275,9 @@ function collectStar(player, star) {
     scoreText.setText('점수: ' + score);
     
     // 수집 효과 (플레이어 크기 변화)
-    player.setScale(1.5);
+    player.setScale(1.35);
     setTimeout(() => {
-        player.setScale(1);
+        player.setScale(0.9);
     }, 100);
     
     // 모든 별을 수집했는지 확인
