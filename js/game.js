@@ -86,7 +86,22 @@ function create() {
     
     // 플레이어 생성
     console.log('플레이어 생성 중...');
-    player = this.physics.add.sprite(100, 100, 'player_walking1'); // 시작 위치를 훨씬 더 높게 조정
+    
+    // 스프라이트가 로드되었는지 확인
+    if (this.textures.exists('player_walking1')) {
+        player = this.physics.add.sprite(100, 100, 'player_walking1');
+    } else {
+        // 백업 스프라이트 사용
+        console.log('백업 스프라이트 사용');
+        player = this.physics.add.sprite(100, 100, 'player_backup');
+    }
+    
+    // 플레이어가 제대로 생성되었는지 확인
+    if (!player) {
+        console.error('플레이어 생성 실패!');
+        return;
+    }
+    
     player.setScale(0.9)
           .setBounce(0.2)
           .setCollideWorldBounds(true);
@@ -119,13 +134,13 @@ function create() {
         repeat: -1
     });
     
-    // 애니메이션 디버깅을 위한 이벤트 리스너
-    this.anims.events.on('animationstart', function (anim) {
-        console.log('애니메이션 시작:', anim.key);
+    // 애니메이션 디버깅을 위한 이벤트 리스너 (Phaser 3.90.0 호환)
+    this.anims.on('animationstart', function (animation, frame, gameObject) {
+        console.log('애니메이션 시작:', animation.key);
     });
     
-    this.anims.events.on('animationcomplete', function (anim) {
-        console.log('애니메이션 완료:', anim.key);
+    this.anims.on('animationcomplete', function (animation, frame, gameObject) {
+        console.log('애니메이션 완료:', animation.key);
     });
     
     // 초기 애니메이션 설정
@@ -133,15 +148,16 @@ function create() {
     
     console.log('플레이어 생성 완료:', player);
     console.log('애니메이션 생성 완료 - walk, idle');
-    console.log('사용 가능한 애니메이션들:', this.anims.names);
+    // 애니메이션 키 목록 출력 (Phaser 3.90.0 호환)
+    console.log('애니메이션 키 목록:', Array.from(this.anims.anims.keys()));
     
     // 플레이어와 플랫폼 충돌 설정
     this.physics.add.collider(player, platforms);
     
-    // 플레이어가 바닥에 닿았을 때 이벤트
-    player.on('animationcomplete', function () {
-        console.log('플레이어 애니메이션 완료');
-    });
+    // 플레이어 애니메이션 완료 이벤트는 제거 (Phaser 3에서는 다른 방법 사용)
+    // player.on('animationcomplete', function () {
+    //     console.log('플레이어 애니메이션 완료');
+    // });
     
     // 별 그룹 생성
     stars = this.physics.add.group({
@@ -205,42 +221,68 @@ function create() {
 
 // 게임 업데이트 루프
 function update() {
+    // player가 정의되지 않았으면 업데이트하지 않음
+    if (!player) {
+        console.log('플레이어가 정의되지 않음');
+        return;
+    }
+    
+    // 키보드 입력 상태 확인
+    let leftPressed = false;
+    let rightPressed = false;
+    let upPressed = false;
+    let downPressed = false;
+    
+    // 화살표 키 확인
+    if (cursors) {
+        if (cursors.left && cursors.left.isDown) leftPressed = true;
+        if (cursors.right && cursors.right.isDown) rightPressed = true;
+        if (cursors.up && cursors.up.isDown) upPressed = true;
+        if (cursors.down && cursors.down.isDown) downPressed = true;
+    }
+    
+    // WASD 키 확인
+    if (keys) {
+        if (keys.A && keys.A.isDown) leftPressed = true;
+        if (keys.D && keys.D.isDown) rightPressed = true;
+        if (keys.W && keys.W.isDown) upPressed = true;
+        if (keys.S && keys.S.isDown) downPressed = true;
+    }
+    
     // 키보드 입력 디버깅
-    if (cursors.left.isDown) console.log('왼쪽 화살표 눌림');
-    if (cursors.right.isDown) console.log('오른쪽 화살표 눌림');
-    if (cursors.up.isDown) console.log('위쪽 화살표 눌림');
-    if (keys.A.isDown) console.log('A키 눌림');
-    if (keys.D.isDown) console.log('D키 눌림');
-    if (keys.W.isDown) console.log('W키 눌림');
+    if (leftPressed) console.log('왼쪽 키 눌림');
+    if (rightPressed) console.log('오른쪽 키 눌림');
+    if (upPressed) console.log('위쪽 키 눌림');
+    if (downPressed) console.log('아래쪽 키 눌림');
     
     // 키보드 입력 처리
-    if (cursors.left.isDown || keys.A.isDown) {
+    if (leftPressed) {
         console.log('왼쪽 이동 중...');
         player.setVelocityX(-160);
         player.setFlipX(true);
-        // 걷기 애니메이션 재생
-        if (player.anims.getCurrentKey() !== 'walk') {
+        // 걷기 애니메이션 재생 (Phaser 3.90.0 호환)
+        if (!player.anims.isPlaying || player.anims.currentAnim.key !== 'walk') {
             player.anims.play('walk', true);
         }
-    } else if (cursors.right.isDown || keys.D.isDown) {
+    } else if (rightPressed) {
         console.log('오른쪽 이동 중...');
         player.setVelocityX(160);
         player.setFlipX(false);
-        // 걷기 애니메이션 재생
-        if (player.anims.getCurrentKey() !== 'walk') {
+        // 걷기 애니메이션 재생 (Phaser 3.90.0 호환)
+        if (!player.anims.isPlaying || player.anims.currentAnim.key !== 'walk') {
             player.anims.play('walk', true);
         }
     } else {
         player.setVelocityX(0);
-        // 서있을 때 기본 애니메이션 재생
-        if (player.anims.getCurrentKey() !== 'idle') {
+        // 서있을 때 기본 애니메이션 재생 (Phaser 3.90.0 호환)
+        if (!player.anims.isPlaying || player.anims.currentAnim.key !== 'idle') {
             player.anims.play('idle', true);
         }
     }
     
     // 점프 처리 - blocked.down 중심의 착지 판정
-    const isJumpPressed = cursors.up.isDown || keys.W.isDown || keys.SPACE.isDown;
-    const onGround = player.body.blocked.down; // blocked.down 중심으로 착지 판정
+    const isJumpPressed = upPressed || (keys && keys.SPACE && keys.SPACE.isDown);
+    const onGround = player.body && player.body.blocked && player.body.blocked.down; // blocked.down 중심으로 착지 판정
     
     // 바닥에 닿아있을 때 점프 가능 상태로 설정
     if (onGround) {
@@ -255,7 +297,7 @@ function update() {
     }
     
     // S키로 아래로 이동 (공중에서만 허용)
-    if (keys.S.isDown && !onGround) {
+    if (downPressed && !onGround) {
         player.setVelocityY(100);
     }
     
@@ -282,13 +324,16 @@ function collectStar(player, star) {
     
     // 모든 별을 수집했는지 확인
     if (stars.countActive(true) === 0) {
-        // 축하 메시지
-        this.add.text(400, 300, '모든 별을 수집했습니다!', { 
-            fontSize: '32px', 
-            fill: '#FFD700',
-            stroke: '#000',
-            strokeThickness: 4
-        }).setOrigin(0.5);
+        // 축하 메시지 - game 객체를 통해 텍스트 추가
+        const gameScene = player.scene;
+        if (gameScene) {
+            gameScene.add.text(400, 300, '모든 별을 수집했습니다!', { 
+                fontSize: '32px', 
+                fill: '#FFD700',
+                stroke: '#000',
+                strokeThickness: 4
+            }).setOrigin(0.5);
+        }
         
         // 3초 후 별들 재생성
         setTimeout(() => {
